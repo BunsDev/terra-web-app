@@ -3,10 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.svg" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link rel="stylesheet" type="text/css" href="https://cloud.typography.com/7420256/6656612/css/fonts.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="terra-webextension" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Mirror</title>
+
+    <% if (process.env.NODE_ENV === 'production') { %>
+    <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "09c7ac4125c64164933f9a6be1cc2f7e"}'></script>
+    <!-- End Cloudflare Web Analytics -->
+    <% } %>
 
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-RHECFDZEEJ"></script>

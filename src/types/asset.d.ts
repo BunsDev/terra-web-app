@@ -9,14 +9,30 @@ interface Asset {
   symbol?: string
 }
 
-interface ListedItem {
+interface DefaultListedItem {
   symbol: string
-  name: string
   token: string
+}
+
+interface ListedItem extends DefaultListedItem {
+  name: string
   pair: string
   lpToken: string
-  status: "LISTED" | "DELISTED"
+  status: ListedItemStatus
 }
+
+interface ListedItemExternal extends DefaultListedItem {
+  pair?: string
+  icon: string
+}
+
+interface DelistItem {
+  symbol: string
+  date: string
+  ratio: string
+}
+
+type ListedItemStatus = "PRE_IPO" | "LISTED" | "DELISTED"
 
 /* chain */
 interface AssetInfo {

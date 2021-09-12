@@ -1,9 +1,9 @@
-import { FC, ReactNode } from "react"
+import { FC } from "react"
 import classNames from "classnames/bind"
 import Card from "./Card"
 import Icon from "./Icon"
 import Loading from "./Loading"
-import Button from "./Button"
+import Button, { ButtonInterface, Submit } from "./Button"
 import LinkButton, { LinkProps } from "./LinkButton"
 import styles from "./Wait.module.scss"
 
@@ -17,22 +17,21 @@ export enum STATUS {
 
 interface Props {
   status: STATUS
-  hash?: ReactNode
   link?: LinkProps
-  button?: ButtonProps
+  button?: ButtonInterface
 }
 
-const Wait: FC<Props> = ({ status, hash, link, button, children }) => {
+const Wait: FC<Props> = ({ status, link, button, children }) => {
   const title = {
     [STATUS.SUCCESS]: "Complete!",
-    [STATUS.LOADING]: "Wait for receipt...",
+    [STATUS.LOADING]: "Broadcasting transaction...",
     [STATUS.FAILURE]: "Failed",
   }[status]
 
-  const iconName = {
-    [STATUS.SUCCESS]: "check_circle_outline",
-    [STATUS.LOADING]: null,
-    [STATUS.FAILURE]: "highlight_off",
+  const iconName: IconNames | undefined = {
+    [STATUS.SUCCESS]: "CheckDouble" as IconNames,
+    [STATUS.LOADING]: undefined,
+    [STATUS.FAILURE]: "ExclamationCircle" as IconNames,
   }[status]
 
   const icon = iconName ? (
@@ -42,27 +41,27 @@ const Wait: FC<Props> = ({ status, hash, link, button, children }) => {
   )
 
   return (
-    <Card icon={icon} title={title} lg>
-      <section className={styles.contents}>
-        {hash && <div className={styles.hash}>{hash}</div>}
-
-        {status === STATUS.FAILURE ? (
-          <p className={styles.feedback}>{children}</p>
-        ) : (
-          children
-        )}
-      </section>
+    <article>
+      <Card icon={icon} title={title} lg>
+        <section className={styles.contents}>
+          {status === STATUS.FAILURE ? (
+            <p className={styles.feedback}>{children}</p>
+          ) : (
+            children
+          )}
+        </section>
+      </Card>
 
       {(link || button) && (
-        <footer>
+        <Submit>
           {link ? (
-            <LinkButton {...link} size="lg" submit />
+            <LinkButton {...link} size="lg" />
           ) : (
-            <Button {...button} size="lg" submit />
+            <Button {...button} size="lg" />
           )}
-        </footer>
+        </Submit>
       )}
-    </Card>
+    </article>
   )
 }
 

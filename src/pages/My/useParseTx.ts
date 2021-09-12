@@ -1,9 +1,9 @@
-import { Dictionary } from "ramda"
 import { ReactNode } from "react"
+import { minus } from "../../libs/math"
 import { formatAsset } from "../../libs/parse"
 import { truncate } from "../../libs/text"
 import getLpName from "../../libs/getLpName"
-import { useContractsAddress } from "../../hooks"
+import { useProtocol } from "../../data/contract/protocol"
 import * as helpers from "../../forms/receipts/receiptHelpers"
 
 const { parseTokenText, splitTokenText } = helpers
@@ -11,19 +11,35 @@ const { parseTokenText, splitTokenText } = helpers
 export const getBadge = (type: string) => {
   const group: Dictionary<string[]> = {
     Terra: ["TERRA_SEND", "TERRA_RECEIVE", "TERRA_SWAP"],
+    Send: ["SEND"],
+    Receive: ["RECEIVE"],
 
-    Trade: ["BUY", "SELL"],
-    Mint: [
+    Trade: [
+      "BUY",
+      "SELL",
+      "BID_LIMIT_ORDER",
+      "EXECUTE_LIMIT_ORDER",
+      "ASK_LIMIT_ORDER",
+      "CANCEL_LIMIT_ORDER",
+    ],
+    Borrow: [
       "OPEN_POSITION",
       "DEPOSIT_COLLATERAL",
       "WITHDRAW_COLLATERAL",
+      "WITHDRAW_UNLOCKED_UST",
       "MINT",
       "BURN",
       "AUCTION",
     ],
     Pool: ["PROVIDE_LIQUIDITY", "WITHDRAW_LIQUIDITY"],
-    Stake: ["STAKE", "UNSTAKE", "WITHDRAW_REWARDS"],
-    Gov: ["GOV_STAKE", "GOV_UNSTAKE", "GOV_CREATE_POLL", "GOV_CAST_POLL"],
+    Farm: ["STAKE", "UNSTAKE", "WITHDRAW_REWARDS"],
+    Gov: [
+      "GOV_STAKE",
+      "GOV_UNSTAKE",
+      "GOV_CREATE_POLL",
+      "GOV_CAST_POLL",
+      "GOV_WITHDRAW_VOTING_REWARDS",
+    ],
 
     Airdrop: ["CLAIM_AIRDROP"],
   }
@@ -37,22 +53,39 @@ const useParseTx = ({ type, data, token }: Tx) => {
   const { offerAsset, offerAmount, askAsset, returnAmount } = data
   const { assetToken, positionIdx, pollId, voteOption } = data
 
-  const { getSymbol } = useContractsAddress()
+  const { getSymbol } = useProtocol()
   const symbol = getSymbol(token)
 
   const formatToken = (asset?: Asset) =>
     formatAsset(asset?.amount, getSymbol(asset?.token))
 
+  /* terra: swap */
+  const offer = splitTokenText(data.offer)
+  const swap = splitTokenText(data.swapCoin)
+
+  /* mint */
   const collateral = splitTokenText(data.collateralAmount)
   const deposit = splitTokenText(data.depositAmount)
   const withdraw = splitTokenText(data.withdrawAmount)
   const mint = splitTokenText(data.mintAmount)
   const burn = splitTokenText(data.burnAmount)
+  const { amount: unlocked } = splitTokenText(data.unlockedAmount)
+  const { amount: tax } = splitTokenText(data.taxAmount)
+
+  /* pool */
   const assets = parseTokenText(data.assets)
   const refund = parseTokenText(data.refundAssets)
-  const offer = splitTokenText(data.offer)
-  const swap = splitTokenText(data.swapCoin)
+
+  /* liquidation */
   const liquidated = splitTokenText(data.liquidatedAmount)
+
+  /* limit order */
+  const askLimitOrder = splitTokenText(data.askAsset)
+  const offerLimitOrder = splitTokenText(data.offerAsset)
+  const bidderReceiveLimitOrder = splitTokenText(data.bidderReceive)
+  const executorReceiveLimitOrder = splitTokenText(data.executorReceive)
+  const limitOrderType =
+    bidderReceiveLimitOrder.token === "uusd" ? "SELL" : "BUY"
 
   const parser: Dictionary<ReactNode[]> = {
     /* Terra */
@@ -80,10 +113,37 @@ const useParseTx = ({ type, data, token }: Tx) => {
       "for",
       formatAsset(returnAmount, getSymbol(askAsset)),
     ],
+    BID_LIMIT_ORDER: [
+      "Order to buy",
+      formatToken(askLimitOrder),
+      "with",
+      formatToken(offerLimitOrder),
+    ],
+    ASK_LIMIT_ORDER: [
+      "Order to sell",
+      formatToken(offerLimitOrder),
+      "with",
+      formatToken(askLimitOrder),
+    ],
+    EXECUTE_LIMIT_ORDER: {
+      BUY: [
+        "Bought",
+        formatToken(bidderReceiveLimitOrder),
+        "with",
+        formatToken(executorReceiveLimitOrder),
+      ],
+      SELL: [
+        "Sold",
+        formatToken(executorReceiveLimitOrder),
+        "for",
+        formatToken(bidderReceiveLimitOrder),
+      ],
+    }[limitOrderType],
+    CANCEL_LIMIT_ORDER: ["Canceled limit order ID", data.orderId],
 
     /* Mint */
     OPEN_POSITION: [
-      "Minted",
+      "Borrowed",
       formatToken(mint),
       "with",
       formatToken(collateral),
@@ -100,7 +160,11 @@ const useParseTx = ({ type, data, token }: Tx) => {
       "from position",
       positionIdx,
     ],
-    MINT: ["Minted", formatToken(mint), "to position", positionIdx],
+    WITHDRAW_UNLOCKED_UST: [
+      "Claimed",
+      formatAsset(minus(unlocked, tax), "uusd"),
+    ],
+    MINT: ["Borrowed", formatToken(mint), "to position", positionIdx],
     BURN: ["Burned", formatToken(burn), "from position", positionIdx],
     AUCTION: [
       "Liquidated",
@@ -136,6 +200,10 @@ const useParseTx = ({ type, data, token }: Tx) => {
     GOV_UNSTAKE: ["Unstaked", formatAsset(amount, symbol)],
     GOV_CREATE_POLL: ["Created poll", pollId],
     GOV_CAST_POLL: ["Voted", voteOption, "to poll", pollId],
+    GOV_WITHDRAW_VOTING_REWARDS: [
+      "Withdraw rewards",
+      formatAsset(amount, "MIR"),
+    ],
 
     /* Airdrop */
     CLAIM_AIRDROP: ["Claimed airdrop", formatAsset(amount, symbol)],
